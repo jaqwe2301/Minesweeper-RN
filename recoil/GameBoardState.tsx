@@ -21,6 +21,11 @@ export const StateBoardAtom = atom<number[][]>({
   default: [],
 });
 
+export const OpenStateAtom = atom<boolean[][]>({
+  key: "openStateAtom",
+  default: [],
+});
+
 export const MinesCountAtom = atom<MinesCountAtom>({
   key: "minesCountAtom",
   default: { sum: 0, rest: 0 },
