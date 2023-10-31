@@ -36,7 +36,7 @@ export function generateMinesBoard(
       minesPlaced++;
     }
   }
-
+  // console.log(minesBoard);
   return minesBoard;
 }
 
@@ -45,21 +45,11 @@ export function generateStateBoard(
   rows: number,
   cols: number,
   minesBoard: boolean[][]
-): Cell[][] {
-  let stateBoard: Cell[][] = Array(rows)
-    .fill(null)
-    .map(() =>
-      Array(cols).fill({
-        surroundingMines: 0,
-        isOpen: false,
-        hasFlag: false,
-      })
-    );
+): number[][] {
+  let stateBoard: number[][] = Array.from({ length: rows }, () => []);
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      if (minesBoard[row][col]) continue;
-
       const neighbors = [
         [row - 1, col - 1],
         [row - 1, col],
@@ -71,20 +61,21 @@ export function generateStateBoard(
         [row + 1, col + 1],
       ];
 
-      let mineCount = 0;
+      let trueCount = 0;
+
       for (let [nRow, nCol] of neighbors) {
         if (
           nRow >= 0 &&
-          nRow < rows &&
+          nRow < minesBoard.length &&
           nCol >= 0 &&
-          nCol < cols &&
+          nCol < minesBoard[0].length &&
           minesBoard[nRow][nCol]
         ) {
-          mineCount++;
+          trueCount++;
         }
       }
 
-      stateBoard[row][col].surroundingMines = mineCount;
+      stateBoard[row][col] = trueCount;
     }
   }
 

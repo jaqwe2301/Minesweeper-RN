@@ -21,8 +21,8 @@ function SettingsModal() {
 
   const difficulties = {
     Beginner: { rows: 8, cols: 8, mines: 10 },
-    Intermediate: { rows: 10, cols: 14, mines: 40 },
-    Expert: { rows: 14, cols: 32, mines: 99 },
+    Intermediate: { rows: 14, cols: 10, mines: 40 },
+    Expert: { rows: 32, cols: 14, mines: 99 },
   };
 
   const handleApply = () => {
