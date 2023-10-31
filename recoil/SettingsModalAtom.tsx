@@ -9,3 +9,8 @@ export const DifficultiesAtom = atom({
   key: "difficultiesAtom",
   default: "Beginner",
 });
+
+export const TimeAtom = atom({
+  key: "timeAtom",
+  default: 0,
+});

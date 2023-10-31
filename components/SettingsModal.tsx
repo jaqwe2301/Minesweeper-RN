@@ -1,20 +1,22 @@
 import { View, Modal, Text, StyleSheet, Pressable } from "react-native";
 import { useRecoilState } from "recoil";
-import { MinesBoardAtom, StateBoardAtom } from "../recoil/GameBoardState";
+import {
+  MinesBoardAtom,
+  StateBoardAtom,
+  MinesCountAtom,
+} from "../recoil/GameBoardState";
 import {
   SettingsModalAtom,
   DifficultiesAtom,
 } from "../recoil/SettingsModalAtom";
-import {
-  generateMinesBoard,
-  generateStateBoard,
-} from "../recoil/GameBoardState";
+import { generateMinesBoard, generateStateBoard } from "../logic/GameHandler";
 
 type Difficulty = "Beginner" | "Intermediate" | "Expert";
 
 function SettingsModal() {
   const [minesBoard, setMinesBoard] = useRecoilState(MinesBoardAtom);
   const [stateBoard, setStateBoard] = useRecoilState(StateBoardAtom);
+  const [minesCount, setMinesCount] = useRecoilState(MinesCountAtom);
 
   const [modalVisible, setModalVisible] = useRecoilState(SettingsModalAtom);
   const [difficulty, setDifficulty] = useRecoilState(DifficultiesAtom);
@@ -31,6 +33,7 @@ function SettingsModal() {
     const newStateBoard = generateStateBoard(rows, cols, newMinesBoard);
     setMinesBoard(newMinesBoard);
     setStateBoard(newStateBoard);
+    setMinesCount({ sum: mines, rest: 0 });
     setModalVisible(false);
   };
 
