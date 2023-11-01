@@ -5,6 +5,7 @@ import {
   StateBoardAtom,
   MinesCountAtom,
   OpenStateAtom,
+  FlagStateAtom,
 } from "../recoil/GameBoardState";
 import {
   SettingsModalAtom,
@@ -19,6 +20,7 @@ function SettingsModal() {
   const [stateBoard, setStateBoard] = useRecoilState(StateBoardAtom);
   const [minesCount, setMinesCount] = useRecoilState(MinesCountAtom);
   const [openState, setOpenState] = useRecoilState(OpenStateAtom);
+  const [flagState, setFlagState] = useRecoilState(FlagStateAtom);
 
   const [modalVisible, setModalVisible] = useRecoilState(SettingsModalAtom);
   const [difficulty, setDifficulty] = useRecoilState(DifficultiesAtom);
@@ -31,12 +33,16 @@ function SettingsModal() {
 
   const handleApply = () => {
     const { rows, cols, mines } = difficulties[difficulty as Difficulty];
+    const initialFalseArray = Array.from({ length: rows }, () =>
+      Array(cols).fill(false)
+    );
     const newMinesBoard = generateMinesBoard(rows, cols, mines);
     const newStateBoard = generateStateBoard(rows, cols, newMinesBoard);
     setMinesBoard(newMinesBoard);
     setStateBoard(newStateBoard);
     setMinesCount({ sum: mines, rest: mines });
-    setOpenState(Array.from({ length: rows }, () => Array(cols).fill(false)));
+    setOpenState(initialFalseArray);
+    setFlagState(initialFalseArray);
     setModalVisible(false);
   };
 

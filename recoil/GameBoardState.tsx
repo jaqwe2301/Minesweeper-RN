@@ -26,6 +26,11 @@ export const OpenStateAtom = atom<boolean[][]>({
   default: [],
 });
 
+export const FlagStateAtom = atom<boolean[][]>({
+  key: "flagStateAtom",
+  default: [],
+});
+
 export const MinesCountAtom = atom<MinesCountAtom>({
   key: "minesCountAtom",
   default: { sum: 0, rest: 0 },

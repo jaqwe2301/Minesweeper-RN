@@ -5,6 +5,7 @@ import {
   Text,
   Pressable,
   useWindowDimensions,
+  Alert,
 } from "react-native";
 import { useRecoilState } from "recoil";
 import {
@@ -12,6 +13,7 @@ import {
   StateBoardAtom,
   MinesCountAtom,
   OpenStateAtom,
+  FlagStateAtom,
 } from "../recoil/GameBoardState";
 import { SettingsModalAtom, TimeAtom } from "../recoil/SettingsModalAtom";
 
@@ -23,6 +25,7 @@ function Minesweeper() {
   const [minesCount, setMinesCount] = useRecoilState(MinesCountAtom);
   const [modalVisible, setModalVisible] = useRecoilState(SettingsModalAtom);
   const [openState, setOpenState] = useRecoilState(OpenStateAtom);
+  const [flagState, setFlagState] = useRecoilState(FlagStateAtom);
   const [time, setTime] = useRecoilState(TimeAtom);
 
   const { width, height } = useWindowDimensions();
@@ -32,22 +35,134 @@ function Minesweeper() {
   useEffect(() => {
     if (!modalVisible) {
       setInterval(() => {
-        setTime((prevTime) => prevTime + 1); // 초 단위로 시간 증가
+        setTime((prevTime) => prevTime + 1);
       }, 1000);
     }
   }, [modalVisible]);
 
+  useEffect(() => {
+    if (!modalVisible && checkVictory()) {
+      alert("게임에서 승리하셨습니다!");
+    }
+  }, [openState]);
+
+  const DIRECTIONS = [
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, -1],
+    [0, 1],
+    [1, -1],
+    [1, 0],
+    [1, 1],
+  ];
+
+  // 승리 체크 함수
+  const checkVictory = () => {
+    for (let i = 0; i < stateBoard.length; i++) {
+      for (let j = 0; j < stateBoard[i].length; j++) {
+        if (!minesBoard[i][j] && !openState[i][j]) {
+          // 지뢰가 아닌 셀 중 열리지 않은 셀이 있다면 아직 승리하지 않음
+          return false;
+        }
+      }
+    }
+    return true; // 모든 지뢰가 아닌 셀이 열렸다면 승리
+  };
+
+  const openAdjacentCells = (
+    rowIndex: number,
+    colIndex: number,
+    openState: boolean[][]
+  ) => {
+    // 지뢰가 아니라면 오픈
+    if (!minesBoard[rowIndex][colIndex]) {
+      openState[rowIndex][colIndex] = true;
+    }
+    for (let [dx, dy] of DIRECTIONS) {
+      let newX = rowIndex + dx;
+      let newY = colIndex + dy;
+
+      // 새 위치가 유효한 범위 내에 있는지 확인
+      if (
+        newX >= 0 &&
+        newX < openState.length &&
+        newY >= 0 &&
+        newY < openState[newX].length
+      ) {
+        if (
+          // 주변 셀이 아직 열리지 않았고, 지뢰가 아닐 경우 -> 오픈
+          openState[newX][newY] === false &&
+          minesBoard[newX][newY] === false
+        ) {
+          openState[newX][newY] = true;
+
+          // 주변 셀이 아직 열리지 않은 빈 셀일 경우
+          if (stateBoard[newX][newY] === 0) {
+            openState = openAdjacentCells(newX, newY, openState);
+          }
+        }
+      }
+    }
+    return openState;
+  };
+
+  const reGame = (rowIndex: number, colIndex: number) => {
+    handleFlagPress(rowIndex, colIndex);
+  };
+
   const handleCellPress = (rowIndex: number, colIndex: number) => {
-    if (minesBoard[rowIndex][colIndex]) {
-      // 만약 클릭한 셀이 지뢰라면
-      alert(
-        "You hit a mine!\nGame over.\n찾은 지뢰 수: " +
-          (minesCount.sum - minesCount.rest)
-      );
-    } else {
-      let newStateBoard = [...openState];
-      newStateBoard[rowIndex][colIndex] = true; // 클릭된 상태로 변경
-      setOpenState(newStateBoard);
+    if (!flagState[rowIndex][colIndex]) {
+      setOpenState((prev) => {
+        let prevState = JSON.parse(JSON.stringify(prev)); // 깊은 복사
+
+        if (
+          stateBoard[rowIndex][colIndex] > 0 ||
+          minesBoard[rowIndex][colIndex]
+        ) {
+          prevState[rowIndex][colIndex] = true;
+        } else if (
+          // 만약 셀에 숫자가 없고 지뢰도 없다면 (즉, 빈 셀이라면), 해당 셀 주변의 8개 셀을 검사.
+          prev[rowIndex][colIndex] === false &&
+          minesBoard[rowIndex][colIndex] === false &&
+          stateBoard[rowIndex][colIndex] === 0
+        ) {
+          prevState = openAdjacentCells(rowIndex, colIndex, prevState);
+        }
+        return prevState;
+      });
+
+      if (minesBoard[rowIndex][colIndex]) {
+        // 만약 클릭한 셀이 지뢰라면
+        Alert.alert("Game over", "You hit a mine!", [
+          {
+            text: "다시하기",
+            onPress: () => setModalVisible(true),
+            style: "cancel",
+          },
+          {
+            text: "재진행",
+            onPress: () => reGame(rowIndex, colIndex),
+          },
+        ]);
+      }
+    }
+  };
+  const handleFlagPress = (rowIndex: number, colIndex: number) => {
+    if (!openState[rowIndex][colIndex]) {
+      let flagChanged = !flagState[rowIndex][colIndex];
+      let updatedMinesCount = {
+        ...minesCount,
+        rest: flagChanged ? minesCount.rest - 1 : minesCount.rest + 1,
+      };
+
+      setMinesCount(updatedMinesCount);
+
+      setFlagState((prevFlagState) => {
+        let prevState = JSON.parse(JSON.stringify(prevFlagState)); // 깊은 복사
+        prevState[rowIndex][colIndex] = flagChanged;
+        return prevState;
+      });
     }
   };
 
@@ -69,22 +184,36 @@ function Minesweeper() {
                   style={[
                     styles.cell,
                     {
-                      borderColor: isOpened ? "#000" : "#FFF",
-                      backgroundColor: isOpened ? "#AAA" : "#CCC",
+                      borderColor:
+                        isOpened || flagState[rowIndex][colIndex]
+                          ? "#000"
+                          : "#FFF",
+                      backgroundColor:
+                        isOpened || flagState[rowIndex][colIndex]
+                          ? "#AAA"
+                          : "#CCC",
                     },
                   ]}
                   onPress={() => handleCellPress(rowIndex, colIndex)}
-                  onLongPress={() => {
-                    // 길게 눌렀을 때의 로직 (예: 깃발을 표시한다)
-                  }}
+                  onLongPress={() =>
+                    // 길게 눌렀을 때의 로직 -> 깃발 표시
+                    handleFlagPress(rowIndex, colIndex)
+                  }
                 >
                   <Text
                     style={[
                       styles.cellText,
-                      { color: isOpened ? "#000" : "transparent" }, // 클릭되지 않았을 때 텍스트 숨기기
+                      {
+                        color:
+                          isOpened || flagState[rowIndex][colIndex]
+                            ? "#000"
+                            : "transparent",
+                      }, // 클릭되지 않았을 때 텍스트 숨기기
                     ]}
                   >
-                    {minesBoard[rowIndex][colIndex]
+                    {flagState[rowIndex][colIndex]
+                      ? "🚩"
+                      : minesBoard[rowIndex][colIndex]
                       ? "💣"
                       : cell.toString() === "0"
                       ? ""
