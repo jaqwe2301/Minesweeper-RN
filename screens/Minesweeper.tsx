@@ -15,9 +15,16 @@ import {
   OpenStateAtom,
   FlagStateAtom,
 } from "../recoil/GameBoardState";
-import { SettingsModalAtom, TimeAtom } from "../recoil/SettingsModalAtom";
+import {
+  SettingsModalAtom,
+  TimeAtom,
+  GameStartAtom,
+  TimeIdAtom,
+} from "../recoil/SettingsModalAtom";
 
 import SettingsModal from "../components/SettingsModal";
+
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 function Minesweeper() {
   const [minesBoard, setMinesBoard] = useRecoilState(MinesBoardAtom);
@@ -27,22 +34,20 @@ function Minesweeper() {
   const [openState, setOpenState] = useRecoilState(OpenStateAtom);
   const [flagState, setFlagState] = useRecoilState(FlagStateAtom);
   const [time, setTime] = useRecoilState(TimeAtom);
+  const [gameStart, setGameStart] = useRecoilState(GameStartAtom);
+  const [timeId, setTimeId] = useRecoilState(TimeIdAtom);
 
   const { width, height } = useWindowDimensions();
 
   const styles = getStyles(width - 40, height - 40);
 
   useEffect(() => {
-    if (!modalVisible) {
-      setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
-      }, 1000);
-    }
-  }, [modalVisible]);
-
-  useEffect(() => {
     if (!modalVisible && checkVictory()) {
       alert("게임에서 승리하셨습니다!");
+      if (timeId) {
+        clearInterval(timeId);
+        setTimeId(null);
+      }
     }
   }, [openState]);
 
@@ -171,59 +176,66 @@ function Minesweeper() {
       <SettingsModal />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text>{"남은 지뢰 수: " + minesCount.rest + "   "}</Text>
-          <Text>{"진행시간: " + time}</Text>
+          <Text style={{ width: 110 }}>
+            {"남은 지뢰 수: " + minesCount.rest + "   "}
+          </Text>
+          <Pressable onPress={() => setModalVisible(true)}>
+            <Icon name="cog-pause" size={42} />
+          </Pressable>
+          <Text style={{ width: 110 }}>{"진행시간: " + time}</Text>
         </View>
-        {stateBoard.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
-            {row.map((cell, colIndex) => {
-              const isOpened = openState[rowIndex][colIndex];
-              return (
-                <Pressable
-                  key={colIndex}
-                  style={[
-                    styles.cell,
-                    {
-                      borderColor:
-                        isOpened || flagState[rowIndex][colIndex]
-                          ? "#000"
-                          : "#FFF",
-                      backgroundColor:
-                        isOpened || flagState[rowIndex][colIndex]
-                          ? "#AAA"
-                          : "#CCC",
-                    },
-                  ]}
-                  onPress={() => handleCellPress(rowIndex, colIndex)}
-                  onLongPress={() =>
-                    // 길게 눌렀을 때의 로직 -> 깃발 표시
-                    handleFlagPress(rowIndex, colIndex)
-                  }
-                >
-                  <Text
+        <View style={styles.contents}>
+          {stateBoard.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.row}>
+              {row.map((cell, colIndex) => {
+                const isOpened = openState[rowIndex][colIndex];
+                return (
+                  <Pressable
+                    key={colIndex}
                     style={[
-                      styles.cellText,
+                      styles.cell,
                       {
-                        color:
+                        borderColor:
                           isOpened || flagState[rowIndex][colIndex]
                             ? "#000"
-                            : "transparent",
-                      }, // 클릭되지 않았을 때 텍스트 숨기기
+                            : "#FFF",
+                        backgroundColor:
+                          isOpened || flagState[rowIndex][colIndex]
+                            ? "#AAA"
+                            : "#CCC",
+                      },
                     ]}
+                    onPress={() => handleCellPress(rowIndex, colIndex)}
+                    onLongPress={() =>
+                      // 길게 눌렀을 때의 로직 -> 깃발 표시
+                      handleFlagPress(rowIndex, colIndex)
+                    }
                   >
-                    {flagState[rowIndex][colIndex]
-                      ? "🚩"
-                      : minesBoard[rowIndex][colIndex]
-                      ? "💣"
-                      : cell.toString() === "0"
-                      ? ""
-                      : cell.toString()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ))}
+                    <Text
+                      style={[
+                        styles.cellText,
+                        {
+                          color:
+                            isOpened || flagState[rowIndex][colIndex]
+                              ? "#000"
+                              : "transparent",
+                        }, // 클릭되지 않았을 때 텍스트 숨기기
+                      ]}
+                    >
+                      {flagState[rowIndex][colIndex]
+                        ? "🚩"
+                        : minesBoard[rowIndex][colIndex]
+                        ? "💣"
+                        : cell.toString() === "0"
+                        ? ""
+                        : cell.toString()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </View>
       </View>
     </>
   );
@@ -246,8 +258,13 @@ const getStyles = (width: number, height: number) => {
     header: {
       height: 50,
       width: width,
+      justifyContent: "space-between",
+      alignItems: "center",
       backgroundColor: "white",
       flexDirection: "row",
+    },
+    contents: {
+      flex: 1,
     },
     cell: {
       width: 30,

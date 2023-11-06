@@ -10,10 +10,13 @@ import {
 import {
   SettingsModalAtom,
   DifficultiesAtom,
+  TimeAtom,
+  TimeIdAtom,
 } from "../recoil/SettingsModalAtom";
 import { generateMinesBoard, generateStateBoard } from "../logic/GameHandler";
 
 type Difficulty = "Beginner" | "Intermediate" | "Expert";
+type T = ReturnType<typeof setInterval>;
 
 function SettingsModal() {
   const [minesBoard, setMinesBoard] = useRecoilState(MinesBoardAtom);
@@ -21,6 +24,8 @@ function SettingsModal() {
   const [minesCount, setMinesCount] = useRecoilState(MinesCountAtom);
   const [openState, setOpenState] = useRecoilState(OpenStateAtom);
   const [flagState, setFlagState] = useRecoilState(FlagStateAtom);
+  const [time, setTime] = useRecoilState(TimeAtom);
+  const [timeId, setTimeId] = useRecoilState(TimeIdAtom);
 
   const [modalVisible, setModalVisible] = useRecoilState(SettingsModalAtom);
   const [difficulty, setDifficulty] = useRecoilState(DifficultiesAtom);
@@ -36,10 +41,27 @@ function SettingsModal() {
     const initialFalseArray = Array.from({ length: rows }, () =>
       Array(cols).fill(false)
     );
+
+    if (!timeId) {
+      const id: T = setInterval(() => {
+        setTime((prevTime) => prevTime + 1);
+      }, 1000);
+      setTimeId(id);
+    } else {
+      clearInterval(timeId);
+      setTime(0);
+      const newTimerId = setInterval(() => {
+        setTime((prevTime) => prevTime + 1);
+      }, 1000);
+      setTimeId(newTimerId);
+    }
+
     const newMinesBoard = generateMinesBoard(rows, cols, mines);
     const newStateBoard = generateStateBoard(rows, cols, newMinesBoard);
+
     setMinesBoard(newMinesBoard);
     setStateBoard(newStateBoard);
+
     setMinesCount({ sum: mines, rest: mines });
     setOpenState(initialFalseArray);
     setFlagState(initialFalseArray);
@@ -72,10 +94,20 @@ function SettingsModal() {
                 </Pressable>
               );
             })}
-
-            <Pressable onPress={handleApply} style={styles.button}>
-              <Text>적용</Text>
-            </Pressable>
+            <View style={styles.buttonContainer}>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                style={[styles.button, { backgroundColor: "grey" }]}
+              >
+                <Text style={{ color: "white" }}>취소</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleApply}
+                style={[styles.button, { backgroundColor: "#2196F3" }]}
+              >
+                <Text style={{ color: "white", fontWeight: "bold" }}>적용</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
@@ -105,10 +137,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
+  buttonContainer: {
+    flexDirection: "row",
+    gap: 10,
+  },
   button: {
     padding: 10,
     borderRadius: 5,
-    backgroundColor: "#2196F3",
     alignItems: "center",
   },
   option: {
