@@ -1,4 +1,11 @@
-import { View, Modal, Text, StyleSheet, Pressable } from "react-native";
+import {
+  View,
+  Modal,
+  Text,
+  StyleSheet,
+  Pressable,
+  useWindowDimensions,
+} from "react-native";
 import { useRecoilState } from "recoil";
 import {
   MinesBoardAtom,
@@ -6,12 +13,14 @@ import {
   MinesCountAtom,
   OpenStateAtom,
   FlagStateAtom,
+  IsGameOverState,
 } from "../recoil/GameBoardState";
 import {
   SettingsModalAtom,
   DifficultiesAtom,
   TimeAtom,
   TimeIdAtom,
+  BoardColSizeState,
 } from "../recoil/SettingsModalAtom";
 import { generateMinesBoard, generateStateBoard } from "../logic/GameHandler";
 
@@ -19,6 +28,8 @@ type Difficulty = "Beginner" | "Intermediate" | "Expert";
 type T = ReturnType<typeof setInterval>;
 
 function SettingsModal() {
+  const { width, height } = useWindowDimensions();
+
   const [minesBoard, setMinesBoard] = useRecoilState(MinesBoardAtom);
   const [stateBoard, setStateBoard] = useRecoilState(StateBoardAtom);
   const [minesCount, setMinesCount] = useRecoilState(MinesCountAtom);
@@ -26,6 +37,8 @@ function SettingsModal() {
   const [flagState, setFlagState] = useRecoilState(FlagStateAtom);
   const [time, setTime] = useRecoilState(TimeAtom);
   const [timeId, setTimeId] = useRecoilState(TimeIdAtom);
+  const [boardColSize, setBoardColSize] = useRecoilState(BoardColSizeState);
+  const [isGameOver, setIsGameOver] = useRecoilState(IsGameOverState);
 
   const [modalVisible, setModalVisible] = useRecoilState(SettingsModalAtom);
   const [difficulty, setDifficulty] = useRecoilState(DifficultiesAtom);
@@ -42,19 +55,22 @@ function SettingsModal() {
       Array(cols).fill(false)
     );
 
+    // 게임 시작
+    setIsGameOver(false);
+    setTime(0);
     if (!timeId) {
-      const id: T = setInterval(() => {
+      const id = setInterval(() => {
         setTime((prevTime) => prevTime + 1);
       }, 1000);
       setTimeId(id);
-    } else {
-      clearInterval(timeId);
-      setTime(0);
-      const newTimerId = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
-      }, 1000);
-      setTimeId(newTimerId);
     }
+
+    // 셀 계산
+    const rowCell = (height - 90 - (2 * rows + 8)) / rows;
+    const colCell = (width - 40 - (2 * cols + 8)) / cols;
+    const colCellHeight = colCell * rows + (2 * rows + 8) + 90;
+    const cellSize = colCellHeight > height ? rowCell : colCell;
+    setBoardColSize(cellSize + 2);
 
     const newMinesBoard = generateMinesBoard(rows, cols, mines);
     const newStateBoard = generateStateBoard(rows, cols, newMinesBoard);

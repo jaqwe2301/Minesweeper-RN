@@ -26,3 +26,8 @@ export const TimeIdAtom = atom<T>({
   key: "timeIdAtom",
   default: null,
 });
+
+export const BoardColSizeState = atom({
+  key: "boardColSizeState",
+  default: 0,
+});

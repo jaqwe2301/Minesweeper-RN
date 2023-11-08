@@ -35,3 +35,8 @@ export const MinesCountAtom = atom<MinesCountAtom>({
   key: "minesCountAtom",
   default: { sum: 0, rest: 0 },
 });
+
+export const IsGameOverState = atom({
+  key: "isGameOverState",
+  default: false,
+});

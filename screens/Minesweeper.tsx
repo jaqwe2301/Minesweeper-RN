@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -6,6 +6,7 @@ import {
   Pressable,
   useWindowDimensions,
   Alert,
+  LayoutChangeEvent,
 } from "react-native";
 import { useRecoilState } from "recoil";
 import {
@@ -14,19 +15,21 @@ import {
   MinesCountAtom,
   OpenStateAtom,
   FlagStateAtom,
+  IsGameOverState,
 } from "../recoil/GameBoardState";
 import {
   SettingsModalAtom,
   TimeAtom,
   GameStartAtom,
   TimeIdAtom,
+  BoardColSizeState,
 } from "../recoil/SettingsModalAtom";
 
 import SettingsModal from "../components/SettingsModal";
 
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-function Minesweeper() {
+const Minesweeper = React.memo(() => {
   const [minesBoard, setMinesBoard] = useRecoilState(MinesBoardAtom);
   const [stateBoard, setStateBoard] = useRecoilState(StateBoardAtom);
   const [minesCount, setMinesCount] = useRecoilState(MinesCountAtom);
@@ -36,20 +39,35 @@ function Minesweeper() {
   const [time, setTime] = useRecoilState(TimeAtom);
   const [gameStart, setGameStart] = useRecoilState(GameStartAtom);
   const [timeId, setTimeId] = useRecoilState(TimeIdAtom);
+  const [boardColSize, setBoardColSize] = useRecoilState(BoardColSizeState);
+  const [isGameOver, setIsGameOver] = useRecoilState(IsGameOverState);
 
   const { width, height } = useWindowDimensions();
 
-  const styles = getStyles(width - 40, height - 40);
+  const styles = getStyles(width - 40, height - 40, boardColSize);
 
   useEffect(() => {
     if (!modalVisible && checkVictory()) {
       alert("게임에서 승리하셨습니다!");
       if (timeId) {
         clearInterval(timeId);
-        setTimeId(null);
       }
+      return () => {
+        if (timeId) {
+          clearInterval(timeId);
+        }
+      };
     }
   }, [openState]);
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (timeId) {
+        clearInterval(timeId);
+      }
+    };
+  }, [timeId]);
 
   const DIRECTIONS = [
     [-1, -1],
@@ -61,6 +79,45 @@ function Minesweeper() {
     [1, 0],
     [1, 1],
   ];
+
+  // 타이머 시작
+  const startTimer = () => {
+    if (!timeId) {
+      const id = setInterval(() => {
+        setTime((prevTime) => prevTime + 1);
+      }, 1000);
+      setTimeId(id);
+    }
+  };
+
+  // 타이머 일시정지
+  const pauseTimer = () => {
+    if (timeId) {
+      clearInterval(timeId);
+      setTimeId(null);
+    }
+  };
+
+  // 지뢰를 밟았을 때
+  const hitMine = () => {
+    pauseTimer();
+    setIsGameOver(true);
+  };
+
+  // 게임 재개
+  const resumeGame = () => {
+    if (isGameOver) {
+      startTimer();
+      setIsGameOver(false);
+    }
+  };
+
+  // 게임 재시작
+  const restartGame = () => {
+    setIsGameOver(false);
+    setTime(0);
+    startTimer();
+  };
 
   // 승리 체크 함수
   const checkVictory = () => {
@@ -113,6 +170,7 @@ function Minesweeper() {
   };
 
   const reGame = (rowIndex: number, colIndex: number) => {
+    resumeGame();
     handleFlagPress(rowIndex, colIndex);
   };
 
@@ -139,14 +197,15 @@ function Minesweeper() {
 
       if (minesBoard[rowIndex][colIndex]) {
         // 만약 클릭한 셀이 지뢰라면
+        hitMine();
         Alert.alert("Game over", "You hit a mine!", [
           {
-            text: "다시하기",
-            onPress: () => setModalVisible(true),
+            text: "게임 재시작",
+            onPress: () => restartGame(),
             style: "cancel",
           },
           {
-            text: "재진행",
+            text: "게임 재개",
             onPress: () => reGame(rowIndex, colIndex),
           },
         ]);
@@ -171,6 +230,11 @@ function Minesweeper() {
     }
   };
 
+  const onLayoutHandler = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    console.log("아래 박스: " + height);
+  };
+
   return (
     <>
       <SettingsModal />
@@ -184,71 +248,74 @@ function Minesweeper() {
           </Pressable>
           <Text style={{ width: 110 }}>{"진행시간: " + time}</Text>
         </View>
-        <View style={styles.contents}>
-          {stateBoard.map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.row}>
-              {row.map((cell, colIndex) => {
-                const isOpened = openState[rowIndex][colIndex];
-                return (
-                  <Pressable
-                    key={colIndex}
-                    style={[
-                      styles.cell,
-                      {
-                        borderColor:
-                          isOpened || flagState[rowIndex][colIndex]
-                            ? "#000"
-                            : "#FFF",
-                        backgroundColor:
-                          isOpened || flagState[rowIndex][colIndex]
-                            ? "#AAA"
-                            : "#CCC",
-                      },
-                    ]}
-                    onPress={() => handleCellPress(rowIndex, colIndex)}
-                    onLongPress={() =>
-                      // 길게 눌렀을 때의 로직 -> 깃발 표시
-                      handleFlagPress(rowIndex, colIndex)
-                    }
-                  >
-                    <Text
+        <View style={styles.contents} onLayout={onLayoutHandler}>
+          <View style={styles.cellContainer}>
+            {stateBoard.map((row, rowIndex) => (
+              <View key={rowIndex} style={styles.row}>
+                {row.map((cell, colIndex) => {
+                  const isOpened = openState[rowIndex][colIndex];
+                  return (
+                    <Pressable
+                      key={colIndex}
                       style={[
-                        styles.cellText,
+                        styles.cell,
                         {
-                          color:
+                          borderColor:
                             isOpened || flagState[rowIndex][colIndex]
                               ? "#000"
-                              : "transparent",
-                        }, // 클릭되지 않았을 때 텍스트 숨기기
+                              : "#FFF",
+                          backgroundColor:
+                            isOpened || flagState[rowIndex][colIndex]
+                              ? "#AAA"
+                              : "#CCC",
+                        },
                       ]}
+                      onPress={() => handleCellPress(rowIndex, colIndex)}
+                      onLongPress={() =>
+                        // 길게 눌렀을 때의 로직 -> 깃발 표시
+                        handleFlagPress(rowIndex, colIndex)
+                      }
                     >
-                      {flagState[rowIndex][colIndex]
-                        ? "🚩"
-                        : minesBoard[rowIndex][colIndex]
-                        ? "💣"
-                        : cell.toString() === "0"
-                        ? ""
-                        : cell.toString()}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
+                      <Text
+                        style={[
+                          styles.cellText,
+                          {
+                            color:
+                              isOpened || flagState[rowIndex][colIndex]
+                                ? "#000"
+                                : "transparent",
+                          }, // 클릭되지 않았을 때 텍스트 숨기기
+                        ]}
+                      >
+                        {flagState[rowIndex][colIndex]
+                          ? "🚩"
+                          : minesBoard[rowIndex][colIndex]
+                          ? "💣"
+                          : cell.toString() === "0"
+                          ? ""
+                          : cell.toString()}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
         </View>
       </View>
     </>
   );
-}
+});
 
 export default Minesweeper;
 
-const getStyles = (width: number, height: number) => {
+const getStyles = (width: number, height: number, cellSize: number) => {
+  // const getStyles = (width: number, height: number) => {
   return StyleSheet.create({
     container: {
       flex: 1,
       padding: 20,
-      backgroundColor: "grey",
+      backgroundColor: "#BDBDBD",
       justifyContent: "center",
       alignItems: "center",
     },
@@ -265,10 +332,20 @@ const getStyles = (width: number, height: number) => {
     },
     contents: {
       flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "#606060",
+      width: width,
+    },
+    cellContainer: {
+      borderWidth: 4,
+      borderColor: "grey",
     },
     cell: {
-      width: 30,
-      height: 30,
+      // width: 15,
+      width: cellSize,
+      // height: 15,
+      height: cellSize,
       justifyContent: "center",
       alignItems: "center",
       borderWidth: 1,
