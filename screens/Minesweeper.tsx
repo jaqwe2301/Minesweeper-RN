@@ -6,7 +6,6 @@ import {
   Pressable,
   useWindowDimensions,
   Alert,
-  LayoutChangeEvent,
 } from "react-native";
 import { useRecoilState } from "recoil";
 import {
@@ -49,6 +48,7 @@ const Minesweeper = React.memo(() => {
   useEffect(() => {
     if (!modalVisible && checkVictory()) {
       alert("게임에서 승리하셨습니다!");
+      setIsGameOver(true);
       if (timeId) {
         clearInterval(timeId);
       }
@@ -106,10 +106,8 @@ const Minesweeper = React.memo(() => {
 
   // 게임 재개
   const resumeGame = () => {
-    if (isGameOver) {
-      startTimer();
-      setIsGameOver(false);
-    }
+    startTimer();
+    setIsGameOver(false);
   };
 
   // 게임 재시작
@@ -230,11 +228,6 @@ const Minesweeper = React.memo(() => {
     }
   };
 
-  const onLayoutHandler = (event: LayoutChangeEvent) => {
-    const { width, height } = event.nativeEvent.layout;
-    console.log("아래 박스: " + height);
-  };
-
   return (
     <>
       <SettingsModal />
@@ -248,7 +241,7 @@ const Minesweeper = React.memo(() => {
           </Pressable>
           <Text style={{ width: 110 }}>{"진행시간: " + time}</Text>
         </View>
-        <View style={styles.contents} onLayout={onLayoutHandler}>
+        <View style={styles.contents}>
           <View style={styles.cellContainer}>
             {stateBoard.map((row, rowIndex) => (
               <View key={rowIndex} style={styles.row}>
@@ -270,10 +263,12 @@ const Minesweeper = React.memo(() => {
                               : "#CCC",
                         },
                       ]}
-                      onPress={() => handleCellPress(rowIndex, colIndex)}
+                      onPress={() =>
+                        !isGameOver ? handleCellPress(rowIndex, colIndex) : ""
+                      }
                       onLongPress={() =>
                         // 길게 눌렀을 때의 로직 -> 깃발 표시
-                        handleFlagPress(rowIndex, colIndex)
+                        !isGameOver ? handleFlagPress(rowIndex, colIndex) : ""
                       }
                     >
                       <Text
@@ -342,9 +337,7 @@ const getStyles = (width: number, height: number, cellSize: number) => {
       borderColor: "grey",
     },
     cell: {
-      // width: 15,
       width: cellSize,
-      // height: 15,
       height: cellSize,
       justifyContent: "center",
       alignItems: "center",
