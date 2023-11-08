@@ -47,7 +47,7 @@ const Minesweeper = React.memo(() => {
 
   useEffect(() => {
     if (!modalVisible && checkVictory()) {
-      alert("게임에서 승리하셨습니다!");
+      alert(`게임에서 승리하셨습니다!\n진행시간 : ${time}초`);
       setIsGameOver(true);
       if (timeId) {
         clearInterval(timeId);
@@ -196,17 +196,21 @@ const Minesweeper = React.memo(() => {
       if (minesBoard[rowIndex][colIndex]) {
         // 만약 클릭한 셀이 지뢰라면
         hitMine();
-        Alert.alert("Game over", "You hit a mine!", [
-          {
-            text: "게임 재시작",
-            onPress: () => restartGame(),
-            style: "cancel",
-          },
-          {
-            text: "게임 재개",
-            onPress: () => reGame(rowIndex, colIndex),
-          },
-        ]);
+        Alert.alert(
+          "Game over",
+          `You hit a mine!\n남은 지뢰 수 : ${minesCount.rest}`,
+          [
+            {
+              text: "게임 재시작",
+              onPress: () => restartGame(),
+              style: "cancel",
+            },
+            {
+              text: "게임 재개",
+              onPress: () => reGame(rowIndex, colIndex),
+            },
+          ]
+        );
       }
     }
   };
